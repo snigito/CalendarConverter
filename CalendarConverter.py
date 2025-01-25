@@ -14,29 +14,24 @@ def parse_datetime(date_str, time_str):
 def parse_course_entries(entries):
     meetings = []
 
-    # Split entries by newline to separate different meeting times
     entry_list = entries.split('\n')
 
     for entry in entry_list:
-        # Strip leading and trailing spaces from the entry and skip if it's empty
         entry = entry.strip()
         if not entry:
             continue
 
-        # Split the entry by '|' to separate days, time, and location
         parts = entry.split('|')
-        if len(parts) == 4:
-            parts = parts[1:]
+        if len(parts) < 3:
+            print(f"Skipping malformed entry: {entry}")
+            continue
 
-        # Strip leading and trailing spaces from each part
         days_part = parts[0].strip()
         time_interval = parts[1].strip()
-        location = parts[2].strip()
+        location = parts[2].strip() if len(parts) > 2 else "TBD"
 
-        # Split days part by '/' to handle multiple days
         days = days_part.split('/')
 
-        # Add a meeting tuple for each day
         for day in days:
             meetings.append((day.strip(), time_interval, location))
 
@@ -59,7 +54,15 @@ def process_class_info(file_path, ics_path):
     cal = Calendar()
 
     # Find the column indices for the required columns (assuming the third row contains the headers)
-    header = {cell.value: idx for idx, cell in enumerate(ws[3], 1)}
+    header = {cell.value.strip() if cell.value else None: idx for idx, cell in enumerate(ws[3], 1)}
+    print(f"Detected headers: {header}")  # Debugging: print detected headers
+
+    # Ensure required headers are present
+    required_headers = ['Start Date', 'End Date', 'Meeting Patterns', 'Course Listing']
+    missing_headers = [col for col in required_headers if col not in header]
+    if missing_headers:
+        raise ValueError(f"Missing required headers: {missing_headers}")
+
 
     start_date_col = header.get('Start Date') - 1
     end_date_col = header.get('End Date') - 1
